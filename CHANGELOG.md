@@ -1,3 +1,5 @@
+# 0.17.0-qtum
+- replace crates.io `bitcoin` dependency with path to local `../../rust-qtum/bitcoin`
 # 0.17.0
 
 - add `list_wallet_dir` rpc
