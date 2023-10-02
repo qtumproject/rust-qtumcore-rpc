@@ -28,7 +28,8 @@ pub extern crate bitcoincore_rpc_json;
 pub use crate::json::bitcoin;
 pub use bitcoincore_rpc_json as json;
 use json::bitcoin::consensus::{Decodable, ReadExt};
-use json::bitcoin::hashes::hex::HexIterator;
+use bitcoin_hashes::hex::HexIterator;
+// use json::bitcoin::hashes::hex::HexIterator;
 
 mod client;
 mod error;

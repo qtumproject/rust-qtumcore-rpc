@@ -9,3 +9,5 @@ ord-bitcoincore-rpc = { path = "../client" }
 bitcoin = { path = "../../rust-qtum/bitcoin", version = "0.30.0-qtum", features = ["serde", "rand"]}
 lazy_static = "1.4.0"
 log = "0.4"
+bitcoin-private = { path = "../../rust-qtum/local_deps/internals", version = "0.1.0"}
+bitcoin_hashes = { path = "../../rust-qtum/local_deps/hashes", version = "0.12.0"}
