@@ -44,8 +44,8 @@ use std::fmt;
 /// The module is compatible with the serde attribute.
 pub mod serde_hex {
     use bitcoin::hashes::hex::FromHex;
-    use bitcoin::hex::DisplayHex;
-    // use bitcoin_private::hex::exts::DisplayHex;
+    // use bitcoin::hex::DisplayHex;
+    use bitcoin_private::hex::exts::DisplayHex;
     use serde::de::Error;
     use serde::{Deserializer, Serializer};
 
@@ -60,8 +60,7 @@ pub mod serde_hex {
 
     pub mod opt {
         use bitcoin::hashes::hex::FromHex;
-        use bitcoin::hex::DisplayHex;
-        // use bitcoin_private::hex::exts::DisplayHex;
+        use bitcoin_private::hex::exts::DisplayHex;
         use serde::de::Error;
         use serde::{Deserializer, Serializer};
 
