@@ -6,8 +6,8 @@ members = [
     "integration_test",
 ]
 
-[patch.crates-io.bitcoin-private]
-path = "../rust-qtum/local_deps/internals"
+# [patch.crates-io.bitcoin-private]
+# path = "../rust-qtum/local_deps/internals"
 
-[patch.crates-io.bitcoin_hashes]
-path = "../rust-qtum/local_deps/hashes"
+# [patch.crates-io.bitcoin_hashes]
+# path = "../rust-qtum/local_deps/hashes"
