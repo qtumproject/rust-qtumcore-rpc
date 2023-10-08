@@ -24,7 +24,7 @@ use bitcoincore_rpc::{Auth, Client, Error, RpcApi};
 
 use crate::json::BlockStatsFields as BsFields;
 use bitcoin::consensus::encode::{deserialize, serialize_hex};
-use bitcoin_hashes::hex::FromHex;
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
 use bitcoin::{secp256k1, ScriptBuf, sighash};
 use bitcoin::{
@@ -579,7 +579,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
     let unspent = unspent.into_iter().nth(0).unwrap();
 
     let tx = Transaction {
-        version: bitcoin::transaction::Version(1),
+        version: 1,
         lock_time: LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
@@ -591,7 +591,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
             witness: Witness::new(),
         }],
         output: vec![TxOut {
-            value: Amount::from_sat((unspent.amount - *FEE).to_sat()),
+            value: (unspent.amount - *FEE).to_sat(),
             script_pubkey: addr.script_pubkey(),
         }],
     };
@@ -608,7 +608,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
     let txid = cl.send_raw_transaction(&res.transaction().unwrap()).unwrap();
 
     let tx = Transaction {
-        version: bitcoin::transaction::Version(1),
+        version: 1,
         lock_time: LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
@@ -620,7 +620,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
             witness: Witness::new(),
         }],
         output: vec![TxOut {
-            value: Amount::from_sat((unspent.amount - *FEE - *FEE).to_sat()),
+            value: (unspent.amount - *FEE - *FEE).to_sat(),
             script_pubkey: RANDOM_ADDRESS.script_pubkey(),
         }],
     };

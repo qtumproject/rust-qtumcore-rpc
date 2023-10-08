@@ -44,7 +44,6 @@ use std::fmt;
 /// The module is compatible with the serde attribute.
 pub mod serde_hex {
     use bitcoin::hashes::hex::FromHex;
-    // use bitcoin::hex::DisplayHex;
     use bitcoin_private::hex::exts::DisplayHex;
     use serde::de::Error;
     use serde::{Deserializer, Serializer};
@@ -193,7 +192,7 @@ pub struct GetWalletInfoResult {
     #[serde(rename = "paytxfee", with = "bitcoin::amount::serde::as_btc")]
     pub pay_tx_fee: Amount,
     #[serde(rename = "hdseedid")]
-    pub hd_seed_id: Option<bitcoin::bip32::XpubIdentifier>,
+    pub hd_seed_id: Option<bitcoin::hash_types::XpubIdentifier>,
     pub private_keys_enabled: bool,
     pub avoid_reuse: Option<bool>,
     pub scanning: Option<ScanningDetails>,
@@ -962,7 +961,7 @@ pub struct GetAddressInfoResultEmbedded {
     #[serde(rename = "hdkeypath")]
     pub hd_key_path: Option<bip32::DerivationPath>,
     #[serde(rename = "hdseedid")]
-    pub hd_seed_id: Option<bitcoin::bip32::XpubIdentifier>,
+    pub hd_seed_id: Option<bitcoin::hash_types::XpubIdentifier>,
     #[serde(default)]
     pub labels: Vec<GetAddressInfoResultLabel>,
 }
@@ -1016,7 +1015,7 @@ pub struct GetAddressInfoResult {
     #[serde(rename = "hdkeypath")]
     pub hd_key_path: Option<bip32::DerivationPath>,
     #[serde(rename = "hdseedid")]
-    pub hd_seed_id: Option<bitcoin::bip32::XpubIdentifier>,
+    pub hd_seed_id: Option<bitcoin::hash_types::XpubIdentifier>,
     pub labels: Vec<GetAddressInfoResultLabel>,
     /// Deprecated in v0.20.0. See `labels` field instead.
     #[deprecated(note = "since Core v0.20.0")]

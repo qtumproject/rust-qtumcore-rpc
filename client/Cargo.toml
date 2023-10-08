@@ -27,5 +27,8 @@ jsonrpc = "0.14.0"
 # Used for deserialization of JSON.
 serde = "1"
 serde_json = "1"
+bitcoin = { path = "../../rust-qtum/bitcoin", version = "0.30.0-qtum", features = ["serde", "rand-std"]}
+bitcoin-private = { path = "../../rust-qtum/internals", version = "0.1.0"}
+bitcoin_hashes = { path = "../../rust-qtum/hashes", version = "0.12.0"}
 # bitcoin-private = { path = "../../rust-qtum/local_deps/internals", version = "0.1.0"}
 # bitcoin_hashes = { path = "../../rust-qtum/local_deps/hashes", version = "0.12.0"}
