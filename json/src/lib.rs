@@ -235,6 +235,11 @@ pub struct GetBlockResult {
     pub n_tx: usize,
     pub previousblockhash: Option<bitcoin::BlockHash>,
     pub nextblockhash: Option<bitcoin::BlockHash>,
+pub hash_state_root: bitcoin::BlockHash,
+pub hash_utxo_root: bitcoin::BlockHash,
+pub flags: String,
+pub proofhash: bitcoin::BlockHash,
+
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
@@ -2189,6 +2194,7 @@ where
 mod tests {
     use super::*;
 
+
     #[test]
     fn test_softfork_type() {
         let buried: SoftforkType = serde_json::from_str("\"buried\"").unwrap();
@@ -2198,4 +2204,5 @@ mod tests {
         let other: SoftforkType = serde_json::from_str("\"bip8\"").unwrap();
         assert_eq!(other, SoftforkType::Other);
     }
+
 }
