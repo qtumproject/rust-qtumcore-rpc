@@ -151,7 +151,7 @@ fn main() {
     test_get_best_block_hash(&cl);
     test_get_block_count(&cl);
     test_get_block_hash(&cl);
-    // QTUM TODO! test_get_block(&cl);
+    test_get_block(&cl);
     test_get_block_header_get_block_header_info(&cl);
     test_get_block_stats(&cl);
     test_get_block_stats_fields(&cl);
