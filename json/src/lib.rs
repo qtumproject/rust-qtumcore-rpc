@@ -235,11 +235,14 @@ pub struct GetBlockResult {
     pub n_tx: usize,
     pub previousblockhash: Option<bitcoin::BlockHash>,
     pub nextblockhash: Option<bitcoin::BlockHash>,
-pub hash_state_root: bitcoin::BlockHash,
-pub hash_utxo_root: bitcoin::BlockHash,
-pub flags: String,
-pub proofhash: bitcoin::BlockHash,
-
+    // Qtum
+    #[serde(rename = "hashStateRoot")]
+    pub hash_state_root: bitcoin::BlockHash,
+    #[serde(rename = "hashUTXORoot")]
+    pub hash_utxo_root: bitcoin::BlockHash,
+    pub flags: String,
+    pub proofhash: bitcoin::BlockHash,
+    pub modifier: bitcoin::BlockHash,
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
