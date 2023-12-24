@@ -1,25 +1,27 @@
 [package]
-name = "ord-bitcoincore-rpc"
+name = "ord-qtumcore-rpc"
 version = "0.17.1-qtum"
 authors = [
     "Steven Roose <steven@stevenroose.org>",
     "Jean Pierre Dudey <jeandudey@hotmail.com>",
     "Dawid Ciężarkiewicz <dpc@dpc.pw>",
+    "The Qtum Developers"
 ]
 license = "CC0-1.0"
 homepage = "https://github.com/rust-bitcoin/rust-bitcoincore-rpc/"
-repository = "https://github.com/rust-bitcoin/rust-bitcoincore-rpc/"
+repository = "https://github.com/qtumproject/rust-bitcoincore-rpc/"
 description = "RPC client library for the Bitcoin Core JSON-RPC API."
 keywords = ["crypto", "bitcoin", "bitcoin-core", "rpc"]
 readme = "README.md"
 edition = "2018"
+autotests = false
 
 [lib]
-name = "bitcoincore_rpc"
+name = "qtumcore_rpc"
 path = "src/lib.rs"
 
 [dependencies]
-ord-bitcoincore-rpc-json = { version = "0.17.1-qtum", path = "../json" }
+ord-qtumcore-rpc-json = { version = "0.17.1-qtum", path = "../json" }
 
 log = "0.4.5"
 jsonrpc = "0.14.0"
@@ -27,8 +29,6 @@ jsonrpc = "0.14.0"
 # Used for deserialization of JSON.
 serde = "1"
 serde_json = "1"
-bitcoin = { path = "../../rust-qtum/bitcoin", version = "0.30.0-qtum", features = ["serde", "rand-std"]}
-bitcoin-private = { path = "../../rust-qtum/internals", version = "0.1.0"}
-bitcoin_hashes = { path = "../../rust-qtum/hashes", version = "0.12.0"}
-# bitcoin-private = { path = "../../rust-qtum/local_deps/internals", version = "0.1.0"}
-# bitcoin_hashes = { path = "../../rust-qtum/local_deps/hashes", version = "0.12.0"}
+qtum = { path = "../../rust-qtum/qtum", version = "0.30.0-qtum", features = ["serde", "rand-std"]}
+qtum-private = { path = "../../rust-qtum/internals", version = "0.1.0-qtum"}
+qtum_hashes = { path = "../../rust-qtum/hashes", version = "0.12.0-qtum"}

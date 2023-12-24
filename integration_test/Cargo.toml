@@ -3,11 +3,13 @@ name = "integration_test"
 version = "0.1.0"
 authors = ["Steven Roose <steven@stevenroose.org>"]
 edition = "2018"
+autotests = false
+publish = false
 
 [dependencies]
-ord-bitcoincore-rpc = { path = "../client" }
-bitcoin = { path = "../../rust-qtum/bitcoin", version = "0.30.0-qtum", features = ["serde", "rand"]}
+ord-qtumcore-rpc = { path = "../client" }
+qtum = { path = "../../rust-qtum/qtum", version = "0.30.0-qtum", features = ["serde", "rand"]}
 lazy_static = "1.4.0"
 log = "0.4"
-bitcoin-private = { path = "../../rust-qtum/internals", version = "0.1.0"}
-bitcoin_hashes = { path = "../../rust-qtum/hashes", version = "0.12.0"}
+qtum-private = { path = "../../rust-qtum/internals", version = "0.1.0-qtum"}
+qtum_hashes = { path = "../../rust-qtum/hashes", version = "0.12.0-qtum"}
