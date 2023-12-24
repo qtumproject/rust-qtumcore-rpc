@@ -1,3 +1,10 @@
+# Rust RPC client for Qtum Core JSON-RPC 
+
+This repository was forked from [rust-bitcoin/rust-bitcoincore-rpc](//github.com/rust-bitcoin/rust-bitcoincore-rpc) to support Qtum blockchain.
+
+See below for the original README
+
+
 [![Status](https://travis-ci.org/rust-bitcoin/rust-bitcoincore-rpc.png?branch=master)](https://travis-ci.org/rust-bitcoin/rust-bitcoincore-rpc)
 
 # Rust RPC client for Bitcoin Core JSON-RPC 
