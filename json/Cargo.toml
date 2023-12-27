@@ -1,6 +1,6 @@
 [package]
 name = "ord-qtumcore-rpc-json"
-version = "0.17.1-qtum"
+version = "0.18.0-qtum"
 authors = [
     "Steven Roose <steven@stevenroose.org>",
     "Jean Pierre Dudey <jeandudey@hotmail.com>",
@@ -23,6 +23,4 @@ path = "src/lib.rs"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
 
-qtum = {version = "0.30.0-qtum", features = ["serde", "rand-std"]}
-qtum-private = {version = "0.1.0-qtum"}
-qtum_hashes = {version = "0.12.0-qtum"}
+qtum = { path = "../../rust-bitcoin/qtum", version = "0.31.0-qtum", features = ["serde", "rand-std"]}

@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use qtum::absolute::LockTime;
-use qtum::address::NetworkChecked;
+use qtum::address::{NetworkChecked, NetworkUnchecked};
 use qtumcore_rpc::json;
 use qtumcore_rpc::jsonrpc::error::Error as JsonRpcError;
 use qtumcore_rpc::{Auth, Client, Error, RpcApi};
@@ -28,8 +28,8 @@ use qtum::hashes::hex::FromHex;
 use qtum::hashes::Hash;
 use qtum::{secp256k1, ScriptBuf, sighash};
 use qtum::{
-    Address, Amount, Network, OutPoint, PrivateKey,
-    Sequence, SignedAmount, Transaction, TxIn, TxOut, Txid, Witness,
+    transaction, Address, Amount, Network, OutPoint, PrivateKey, Sequence, SignedAmount,
+    Transaction, TxIn, TxOut, Txid, Witness,
 };
 use qtumcore_rpc::qtumcore_rpc_json::{
     GetBlockTemplateModes, GetBlockTemplateRules, ScanTxOutRequest,
@@ -106,6 +106,10 @@ fn btc<F: Into<f64>>(btc: F) -> Amount {
 /// Quickly create a signed BTC amount.
 fn sbtc<F: Into<f64>>(btc: F) -> SignedAmount {
     SignedAmount::from_btc(btc.into()).unwrap()
+}
+
+fn get_testdir() -> String {
+    return std::env::var("TESTDIR").expect("TESTDIR must be set");
 }
 
 fn get_rpc_url() -> String {
@@ -203,17 +207,18 @@ fn main() {
     test_uptime(&cl);
     test_getblocktemplate(&cl);
     test_unloadwallet(&cl);
+    test_loadwallet(&cl);
+    test_backupwallet(&cl);
+    test_wait_for_new_block(&cl);
+    test_wait_for_block(&cl);
+    test_get_descriptor_info(&cl);
+    test_derive_addresses(&cl);
+    test_get_mempool_info(&cl);
+    test_add_multisig_address(&cl);
     //TODO import_multi(
     //TODO verify_message(
-    //TODO wait_for_new_block(&self, timeout: u64) -> Result<json::BlockRef> {
-    //TODO wait_for_block(
-    //TODO get_descriptor_info(&self, desc: &str) -> Result<json::GetDescriptorInfoResult> {
-    //TODO derive_addresses(&self, descriptor: &str, range: Option<[u32; 2]>) -> Result<Vec<Address>> {
     //TODO encrypt_wallet(&self, passphrase: &str) -> Result<()> {
     //TODO get_by_id<T: queryable::Queryable<Self>>(
-    //TODO add_multisig_address(
-    //TODO load_wallet(&self, wallet: &str) -> Result<json::LoadWalletResult> {
-    //TODO backup_wallet(&self, destination: Option<&str>) -> Result<()> {
     test_add_node(&cl);
     test_get_added_node_info(&cl);
     test_get_node_addresses(&cl);
@@ -234,7 +239,7 @@ fn test_get_mining_info(cl: &Client) {
 
 fn test_get_blockchain_info(cl: &Client) {
     let info = cl.get_blockchain_info().unwrap();
-    assert_eq!(&info.chain, "regtest");
+    assert_eq!(info.chain, Network::Regtest);
 }
 
 fn test_get_new_address(cl: &Client) {
@@ -579,7 +584,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
     let unspent = unspent.into_iter().nth(0).unwrap();
 
     let tx = Transaction {
-        version: 1,
+        version: transaction::Version::ONE,
         lock_time: LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
@@ -591,7 +596,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
             witness: Witness::new(),
         }],
         output: vec![TxOut {
-            value: (unspent.amount - *FEE).to_sat(),
+            value: (unspent.amount - *FEE),
             script_pubkey: addr.script_pubkey(),
         }],
     };
@@ -608,7 +613,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
     let txid = cl.send_raw_transaction(&res.transaction().unwrap()).unwrap();
 
     let tx = Transaction {
-        version: 1,
+        version: transaction::Version::ONE,
         lock_time: LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
@@ -620,7 +625,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
             witness: Witness::new(),
         }],
         output: vec![TxOut {
-            value: (unspent.amount - *FEE - *FEE).to_sat(),
+            value: (unspent.amount - *FEE - *FEE),
             script_pubkey: RANDOM_ADDRESS.script_pubkey(),
         }],
     };
@@ -1186,8 +1191,12 @@ fn test_add_node(cl: &Client) {
 
 fn test_get_added_node_info(cl: &Client) {
     cl.add_node("127.0.0.1:1234").unwrap();
-    let added_info = cl.get_added_node_info(None).unwrap();
-    assert_eq!(added_info.len(), 1);
+    cl.add_node("127.0.0.1:4321").unwrap();
+
+    assert!(cl.get_added_node_info(Some("127.0.0.1:1111")).is_err());
+    assert_eq!(cl.get_added_node_info(None).unwrap().len(), 2);
+    assert_eq!(cl.get_added_node_info(Some("127.0.0.1:1234")).unwrap().len(), 1);
+    assert_eq!(cl.get_added_node_info(Some("127.0.0.1:4321")).unwrap().len(), 1);
 }
 
 fn test_get_node_addresses(cl: &Client) {
@@ -1279,6 +1288,132 @@ fn test_unloadwallet(cl: &Client) {
         assert!(res.is_some());
     } else {
         assert!(res.is_none());
+    }
+}
+
+fn test_loadwallet(_: &Client) {
+    let wallet_name = "testloadwallet";
+    let wallet_client = new_wallet_client(wallet_name);
+
+    assert!(wallet_client.load_wallet(wallet_name).is_err());
+    wallet_client.create_wallet(wallet_name, None, None, None, None).unwrap();
+    assert!(wallet_client.load_wallet(wallet_name).is_err());
+    wallet_client.unload_wallet(None).unwrap();
+
+    let res = wallet_client.load_wallet(wallet_name).unwrap();
+    assert_eq!(res.name, wallet_name);
+    assert_eq!(res.warning, Some("".into()));
+}
+
+fn test_backupwallet(_: &Client) {
+    let wallet_client = new_wallet_client("testbackupwallet");
+    let backup_path = format!("{}/testbackupwallet.dat", get_testdir());
+
+    assert!(wallet_client.backup_wallet(None).is_err());
+    assert!(wallet_client.backup_wallet(Some(&backup_path)).is_err());
+    wallet_client.create_wallet("testbackupwallet", None, None, None, None).unwrap();
+    assert!(wallet_client.backup_wallet(None).is_err());
+    assert!(wallet_client.backup_wallet(Some(&backup_path)).is_ok());
+}
+
+fn test_wait_for_new_block(cl: &Client) {
+    let height = cl.get_block_count().unwrap();
+    let hash = cl.get_block_hash(height).unwrap();
+
+    assert!(cl.wait_for_new_block(std::u64::MAX).is_err()); // JSON integer out of range
+    assert_eq!(cl.wait_for_new_block(100).unwrap(), json::BlockRef{hash, height});
+}
+
+fn test_wait_for_block(cl: &Client) {
+    let height = cl.get_block_count().unwrap();
+    let hash = cl.get_block_hash(height).unwrap();
+
+    assert!(cl.wait_for_block(&hash, std::u64::MAX).is_err()); // JSON integer out of range
+    assert_eq!(cl.wait_for_block(&hash, 0).unwrap(), json::BlockRef{hash, height});
+}
+
+fn test_get_descriptor_info(cl: &Client) {
+    let res = cl.get_descriptor_info(r"pkh(cSQPHDBwXGjVzWRqAHm6zfvQhaTuj1f2bFH58h55ghbjtFwvmeXR)").unwrap();
+    assert_eq!(res.descriptor, r"pkh(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)#62k9sn4x");
+    assert_eq!(res.is_range, false);
+    assert_eq!(res.is_solvable, true);
+    assert_eq!(res.has_private_keys, true);
+
+    // Checksum introduced in: https://github.com/bitcoin/bitcoin/commit/26d3fad1093dfc697048313be7a96c9adf723654
+    if version() >= 190000 {
+        assert_eq!(res.checksum, Some("37v3lm8x".to_string()));
+    } else {
+        assert!(res.checksum.is_none());
+    }
+
+    assert!(cl.get_descriptor_info("abcdef").is_err());
+}
+
+fn test_add_multisig_address(cl: &Client) {
+    let addr1 = cl.get_new_address(None, Some(json::AddressType::Bech32)).unwrap().assume_checked();
+    let addr2 = cl.get_new_address(None, Some(json::AddressType::Bech32)).unwrap().assume_checked();
+    let addresses = [
+        json::PubKeyOrAddress::Address(&addr1),
+        json::PubKeyOrAddress::Address(&addr2),
+    ];
+
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, None).is_ok());
+    assert!(cl.add_multisig_address(addresses.len() - 1, &addresses, None, None).is_ok());
+    assert!(cl.add_multisig_address(addresses.len() + 1, &addresses, None, None).is_err());
+    assert!(cl.add_multisig_address(0, &addresses, None, None).is_err());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, Some("test_label"), None).is_ok());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, Some(json::AddressType::Legacy)).is_ok());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, Some(json::AddressType::P2shSegwit)).is_ok());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, Some(json::AddressType::Bech32)).is_ok());
+}
+
+#[rustfmt::skip]
+fn test_derive_addresses(cl: &Client) {
+    let descriptor = r"pkh(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)#62k9sn4x";
+    assert_eq!(
+        cl.derive_addresses(descriptor, None).unwrap(),
+        vec!["mrkwtj5xpYQjHeJe5wsweNjVeTKkvR5fCr".parse::<Address<NetworkUnchecked>>().unwrap()]
+    );
+    assert!(cl.derive_addresses(descriptor, Some([0, 1])).is_err()); // Range should not be specified for an unranged descriptor
+
+    let descriptor = std::concat!(
+        r"wpkh([1004658e/84'/1'/0']tpubDCBEcmVKbfC9KfdydyLbJ2gfNL88grZu1XcWSW9ytTM6fi",
+        r"tvaRmVyr8Ddf7SjZ2ZfMx9RicjYAXhuh3fmLiVLPodPEqnQQURUfrBKiiVZc8/0/*)#g8l47ngv",
+    );
+    assert_eq!(cl.derive_addresses(descriptor, Some([0, 1])).unwrap(), vec![
+        "bcrt1q5n5tjkpva8v5s0uadu2y5f0g7pn4h5eqaq2ux2".parse::<Address<NetworkUnchecked>>().unwrap(),
+        "bcrt1qcgl303ht03ja2e0hudpwk7ypcxk5t478wspzlt".parse::<Address<NetworkUnchecked>>().unwrap(),
+    ]);
+    assert!(cl.derive_addresses(descriptor, None).is_err()); // Range must be specified for a ranged descriptor
+}
+
+fn test_get_mempool_info(cl: &Client) {
+    let res = cl.get_mempool_info().unwrap();
+
+    if version() >= 190000 {
+        assert!(res.loaded.is_some());
+    } else {
+        assert!(res.loaded.is_none());
+    }
+
+    if version() >= 210000 {
+        assert!(res.unbroadcast_count.is_some());
+    } else {
+        assert!(res.unbroadcast_count.is_none());
+    }
+
+    if version() >= 220000 {
+        assert!(res.total_fee.is_some());
+    } else {
+        assert!(res.total_fee.is_none());
+    }
+
+    if version() >= 240000 {
+        assert!(res.incremental_relay_fee.is_some());
+        assert!(res.full_rbf.is_some());
+    } else {
+        assert!(res.incremental_relay_fee.is_none());
+        assert!(res.full_rbf.is_none());
     }
 }
 

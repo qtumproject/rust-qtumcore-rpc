@@ -11,7 +11,7 @@
 use std::{error, fmt, io};
 
 use crate::qtum;
-use qtum_hashes::hex;
+use qtum::hashes::hex;
 // use crate::qtum::hashes::hex;
 use crate::qtum::secp256k1;
 use jsonrpc;
@@ -21,7 +21,7 @@ use serde_json;
 #[derive(Debug)]
 pub enum Error {
     JsonRpc(jsonrpc::error::Error),
-    Hex(hex::Error),
+    Hex(hex::HexToBytesError),
     Json(serde_json::error::Error),
     BitcoinSerialization(qtum::consensus::encode::Error),
     Secp256k1(secp256k1::Error),
@@ -40,8 +40,8 @@ impl From<jsonrpc::error::Error> for Error {
     }
 }
 
-impl From<hex::Error> for Error {
-    fn from(e: hex::Error) -> Error {
+impl From<hex::HexToBytesError> for Error {
+    fn from(e: hex::HexToBytesError) -> Error {
         Error::Hex(e)
     }
 }

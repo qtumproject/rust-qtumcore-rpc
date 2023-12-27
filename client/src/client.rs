@@ -10,18 +10,19 @@
 
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::iter::FromIterator;
 use std::path::PathBuf;
 use std::{fmt, result};
 
 use crate::{qtum, deserialize_hex};
-use qtum_private::hex::exts::DisplayHex;
+use qtum::hex::DisplayHex;
 use jsonrpc;
 use serde;
 use serde_json;
 
 use crate::qtum::address::{NetworkUnchecked, NetworkChecked};
-use qtum_hashes::hex::FromHex;
+use qtum::hashes::hex::FromHex;
 use crate::qtum::secp256k1::ecdsa::Signature;
 use crate::qtum::{
     Address, Amount, Block, OutPoint, PrivateKey, PublicKey, Script, Transaction,
@@ -201,19 +202,16 @@ pub enum Auth {
 impl Auth {
     /// Convert into the arguments that jsonrpc::Client needs.
     pub fn get_user_pass(self) -> Result<(Option<String>, Option<String>)> {
-        use std::io::Read;
         match self {
             Auth::None => Ok((None, None)),
             Auth::UserPass(u, p) => Ok((Some(u), Some(p))),
             Auth::CookieFile(path) => {
-                let mut file = File::open(path)?;
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)?;
-                let mut split = contents.splitn(2, ":");
-                Ok((
-                    Some(split.next().ok_or(Error::InvalidCookieFile)?.into()),
-                    Some(split.next().ok_or(Error::InvalidCookieFile)?.into()),
-                ))
+                let line = BufReader::new(File::open(path)?)
+                    .lines()
+                    .next()
+                    .ok_or(Error::InvalidCookieFile)??;
+                let colon = line.find(':').ok_or(Error::InvalidCookieFile)?;
+                Ok((Some(line[..colon].into()), Some(line[colon + 1..].into())))
             }
         }
     }
@@ -1433,5 +1431,35 @@ mod tests {
     #[test]
     fn test_handle_defaults() {
         test_handle_defaults_inner().unwrap();
+    }
+
+    #[test]
+    fn auth_cookie_file_ignores_newline() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let path = tempdir.path().join("cookie");
+        std::fs::write(&path, "foo:bar\n").unwrap();
+        assert_eq!(
+            Auth::CookieFile(path).get_user_pass().unwrap(),
+            (Some("foo".into()), Some("bar".into())),
+        );
+    }
+
+    #[test]
+    fn auth_cookie_file_ignores_additional_lines() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let path = tempdir.path().join("cookie");
+        std::fs::write(&path, "foo:bar\nbaz").unwrap();
+        assert_eq!(
+            Auth::CookieFile(path).get_user_pass().unwrap(),
+            (Some("foo".into()), Some("bar".into())),
+        );
+    }
+
+    #[test]
+    fn auth_cookie_file_fails_if_colon_isnt_present() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let path = tempdir.path().join("cookie");
+        std::fs::write(&path, "foobar").unwrap();
+        assert!(matches!(Auth::CookieFile(path).get_user_pass(), Err(Error::InvalidCookieFile)));
     }
 }
