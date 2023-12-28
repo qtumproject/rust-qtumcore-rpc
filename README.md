@@ -2,8 +2,9 @@
 
 This repository was forked from [rust-bitcoin/rust-bitcoincore-rpc](//github.com/rust-bitcoin/rust-bitcoincore-rpc) to support Qtum blockchain.
 
-See below for the original README
+See below for the original `rust-bitcoincore-rpc` README.
 
+---
 
 [![Status](https://travis-ci.org/rust-bitcoin/rust-bitcoincore-rpc.png?branch=master)](https://travis-ci.org/rust-bitcoin/rust-bitcoincore-rpc)
 

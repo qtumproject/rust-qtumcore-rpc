@@ -231,11 +231,14 @@ pub struct GetBlockResult {
     pub n_tx: usize,
     pub previousblockhash: Option<qtum::BlockHash>,
     pub nextblockhash: Option<qtum::BlockHash>,
-pub hash_state_root: qtum::BlockHash,
-pub hash_utxo_root: qtum::BlockHash,
-pub flags: String,
-pub proofhash: qtum::BlockHash,
-
+    // Qtum
+    #[serde(rename = "hashStateRoot")]
+    pub hash_state_root: qtum::BlockHash,
+    #[serde(rename = "hashUTXORoot")]
+    pub hash_utxo_root: qtum::BlockHash,
+    pub flags: String,
+    pub proofhash: qtum::BlockHash,
+    pub modifier: qtum::BlockHash,
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
