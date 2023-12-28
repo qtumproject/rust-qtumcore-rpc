@@ -18,22 +18,23 @@ extern crate lazy_static;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use bitcoin::absolute::LockTime;
-use bitcoin::address::NetworkChecked;
-use bitcoincore_rpc::json;
-use bitcoincore_rpc::jsonrpc::error::Error as JsonRpcError;
-use bitcoincore_rpc::{Auth, Client, Error, RpcApi};
+use qtum::absolute::LockTime;
+use qtum::address::{NetworkChecked, NetworkUnchecked};
+use qtumcore_rpc::json;
+use qtumcore_rpc::jsonrpc::error::Error as JsonRpcError;
+use qtumcore_rpc::{Auth, Client, Error, RpcApi};
 
 use crate::json::BlockStatsFields as BsFields;
-use bitcoin::consensus::encode::{deserialize, serialize_hex};
-use bitcoin::hashes::hex::FromHex;
-use bitcoin::hashes::Hash;
-use bitcoin::{secp256k1, ScriptBuf, sighash};
-use bitcoin::{
-    Address, Amount, Network, OutPoint, PrivateKey,
-    Sequence, SignedAmount, Transaction, TxIn, TxOut, Txid, Witness,
+use qtum::consensus::encode::{deserialize, serialize_hex};
+use qtum::hashes::hex::FromHex;
+use qtum::hashes::Hash;
+use qtum::{secp256k1, ScriptBuf, sighash};
+use qtum::{
+    transaction, Address, Amount, Network, OutPoint, PrivateKey, Sequence, SignedAmount,
+    Transaction, TxIn, TxOut, Txid, Witness,
 };
-use bitcoincore_rpc::bitcoincore_rpc_json::{
+use qtum::{CompressedPublicKey, NetworkKind};
+use qtumcore_rpc::qtumcore_rpc_json::{
     GetBlockTemplateModes, GetBlockTemplateRules, ScanTxOutRequest,
 };
 
@@ -50,7 +51,7 @@ struct StdLogger;
 
 impl log::Log for StdLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.target().contains("jsonrpc") || metadata.target().contains("bitcoincore_rpc")
+        metadata.target().contains("jsonrpc") || metadata.target().contains("qtumcore_rpc")
     }
 
     fn log(&self, record: &log::Record) {
@@ -110,11 +111,15 @@ fn sbtc<F: Into<f64>>(btc: F) -> SignedAmount {
     SignedAmount::from_btc(btc.into()).unwrap()
 }
 
+fn get_testdir() -> String {
+    return std::env::var("TESTDIR").expect("TESTDIR must be set");
+}
+
 fn get_rpc_url() -> String {
     return std::env::var("RPC_URL").expect("RPC_URL must be set");
 }
 
-fn get_auth() -> bitcoincore_rpc::Auth {
+fn get_auth() -> qtumcore_rpc::Auth {
     if let Ok(cookie) = std::env::var("RPC_COOKIE") {
         return Auth::CookieFile(cookie.into());
     } else if let Ok(user) = std::env::var("RPC_USER") {
@@ -205,17 +210,18 @@ fn main() {
     test_uptime(&cl);
     // QTUM TODO! test_getblocktemplate(&cl);
     test_unloadwallet(&cl);
+    test_loadwallet(&cl);
+    test_backupwallet(&cl);
+    test_wait_for_new_block(&cl);
+    test_wait_for_block(&cl);
+    test_get_descriptor_info(&cl);
+    test_derive_addresses(&cl);
+    test_get_mempool_info(&cl);
+    test_add_multisig_address(&cl);
     //TODO import_multi(
     //TODO verify_message(
-    //TODO wait_for_new_block(&self, timeout: u64) -> Result<json::BlockRef> {
-    //TODO wait_for_block(
-    //TODO get_descriptor_info(&self, desc: &str) -> Result<json::GetDescriptorInfoResult> {
-    //TODO derive_addresses(&self, descriptor: &str, range: Option<[u32; 2]>) -> Result<Vec<Address>> {
     //TODO encrypt_wallet(&self, passphrase: &str) -> Result<()> {
     //TODO get_by_id<T: queryable::Queryable<Self>>(
-    //TODO add_multisig_address(
-    //TODO load_wallet(&self, wallet: &str) -> Result<json::LoadWalletResult> {
-    //TODO backup_wallet(&self, destination: Option<&str>) -> Result<()> {
     test_add_node(&cl);
     test_get_added_node_info(&cl);
     test_get_node_addresses(&cl);
@@ -236,35 +242,36 @@ fn test_get_mining_info(cl: &Client) {
 
 fn test_get_blockchain_info(cl: &Client) {
     let info = cl.get_blockchain_info().unwrap();
-    assert_eq!(&info.chain, "regtest");
+    assert_eq!(info.chain, Network::Regtest);
 }
 
 fn test_get_new_address(cl: &Client) {
     let addr = cl.get_new_address(None, Some(json::AddressType::Legacy)).unwrap().assume_checked();
-    assert_eq!(addr.address_type(), Some(bitcoin::AddressType::P2pkh));
+    assert_eq!(addr.address_type(), Some(qtum::AddressType::P2pkh));
 
     let addr = cl.get_new_address(None, Some(json::AddressType::Bech32)).unwrap().assume_checked();
-    assert_eq!(addr.address_type(), Some(bitcoin::AddressType::P2wpkh));
+    assert_eq!(addr.address_type(), Some(qtum::AddressType::P2wpkh));
 
     let addr = cl.get_new_address(None, Some(json::AddressType::P2shSegwit)).unwrap().assume_checked();
-    assert_eq!(addr.address_type(), Some(bitcoin::AddressType::P2sh));
+    assert_eq!(addr.address_type(), Some(qtum::AddressType::P2sh));
 }
 
 fn test_get_raw_change_address(cl: &Client) {
     let addr = cl.get_raw_change_address(Some(json::AddressType::Legacy)).unwrap().assume_checked();
-    assert_eq!(addr.address_type(), Some(bitcoin::AddressType::P2pkh));
+    assert_eq!(addr.address_type(), Some(qtum::AddressType::P2pkh));
 
     let addr = cl.get_raw_change_address(Some(json::AddressType::Bech32)).unwrap().assume_checked();
-    assert_eq!(addr.address_type(), Some(bitcoin::AddressType::P2wpkh));
+    assert_eq!(addr.address_type(), Some(qtum::AddressType::P2wpkh));
 
     let addr = cl.get_raw_change_address(Some(json::AddressType::P2shSegwit)).unwrap().assume_checked();
-    assert_eq!(addr.address_type(), Some(bitcoin::AddressType::P2sh));
+    assert_eq!(addr.address_type(), Some(qtum::AddressType::P2sh));
 }
 
 fn test_dump_private_key(cl: &Client) {
     let addr = cl.get_new_address(None, Some(json::AddressType::Bech32)).unwrap().assume_checked();
     let sk = cl.dump_private_key(&addr).unwrap();
-    assert_eq!(addr, Address::p2wpkh(&sk.public_key(&SECP), *NET).unwrap());
+    let pk = CompressedPublicKey::from_private_key(&SECP, &sk).unwrap();
+    assert_eq!(addr, Address::p2wpkh(&pk, *NET));
 }
 
 fn test_generate(cl: &Client) {
@@ -567,11 +574,12 @@ fn test_get_block_filter(cl: &Client) {
 
 fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
     let sk = PrivateKey {
-        network: Network::Regtest,
+        network: Network::Regtest.into(),
         inner: secp256k1::SecretKey::new(&mut secp256k1::rand::thread_rng()),
         compressed: true,
     };
-    let addr = Address::p2wpkh(&sk.public_key(&SECP), Network::Regtest).unwrap();
+    let pk = CompressedPublicKey::from_private_key(&SECP, &sk).unwrap();
+    let addr = Address::p2wpkh(&pk, Network::Regtest.into());
 
     let options = json::ListUnspentQueryOptions {
         minimum_amount: Some(btc(2)),
@@ -581,7 +589,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
     let unspent = unspent.into_iter().nth(0).unwrap();
 
     let tx = Transaction {
-        version: 1,
+        version: transaction::Version::ONE,
         lock_time: LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
@@ -593,7 +601,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
             witness: Witness::new(),
         }],
         output: vec![TxOut {
-            value: (unspent.amount - *FEE).to_sat(),
+            value: (unspent.amount - *FEE),
             script_pubkey: addr.script_pubkey(),
         }],
     };
@@ -610,7 +618,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
     let txid = cl.send_raw_transaction(&res.transaction().unwrap()).unwrap();
 
     let tx = Transaction {
-        version: 1,
+        version: transaction::Version::ONE,
         lock_time: LockTime::ZERO,
         input: vec![TxIn {
             previous_output: OutPoint {
@@ -622,7 +630,7 @@ fn test_sign_raw_transaction_with_send_raw_transaction(cl: &Client) {
             witness: Witness::new(),
         }],
         output: vec![TxOut {
-            value: (unspent.amount - *FEE - *FEE).to_sat(),
+            value: (unspent.amount - *FEE - *FEE),
             script_pubkey: RANDOM_ADDRESS.script_pubkey(),
         }],
     };
@@ -980,7 +988,7 @@ fn test_list_received_by_address(cl: &Client) {
 
 fn test_import_public_key(cl: &Client) {
     let sk = PrivateKey {
-        network: Network::Regtest,
+        network: Network::Regtest.into(),
         inner: secp256k1::SecretKey::new(&mut secp256k1::rand::thread_rng()),
         compressed: true,
     };
@@ -991,7 +999,7 @@ fn test_import_public_key(cl: &Client) {
 
 fn test_import_priv_key(cl: &Client) {
     let sk = PrivateKey {
-        network: Network::Regtest,
+        network: Network::Regtest.into(),
         inner: secp256k1::SecretKey::new(&mut secp256k1::rand::thread_rng()),
         compressed: true,
     };
@@ -1002,11 +1010,12 @@ fn test_import_priv_key(cl: &Client) {
 
 fn test_import_address(cl: &Client) {
     let sk = PrivateKey {
-        network: Network::Regtest,
+        network: Network::Regtest.into(),
         inner: secp256k1::SecretKey::new(&mut secp256k1::rand::thread_rng()),
         compressed: true,
     };
-    let addr = Address::p2pkh(&sk.public_key(&SECP), Network::Regtest);
+    let pk = CompressedPublicKey::from_private_key(&SECP, &sk).unwrap();
+    let addr = Address::p2pkh(&pk, NetworkKind::Test);
     cl.import_address(&addr, None, None).unwrap();
     cl.import_address(&addr, Some("l"), None).unwrap();
     cl.import_address(&addr, None, Some(false)).unwrap();
@@ -1014,11 +1023,12 @@ fn test_import_address(cl: &Client) {
 
 fn test_import_address_script(cl: &Client) {
     let sk = PrivateKey {
-        network: Network::Regtest,
+        network: Network::Regtest.into(),
         inner: secp256k1::SecretKey::new(&mut secp256k1::rand::thread_rng()),
         compressed: true,
     };
-    let addr = Address::p2pkh(&sk.public_key(&SECP), Network::Regtest);
+    let pk = CompressedPublicKey::from_private_key(&SECP, &sk).unwrap();
+    let addr = Address::p2pkh(&pk, NetworkKind::Test);
     cl.import_address_script(&addr.script_pubkey(), None, None, None).unwrap();
     cl.import_address_script(&addr.script_pubkey(), Some("l"), None, None).unwrap();
     cl.import_address_script(&addr.script_pubkey(), None, Some(false), None).unwrap();
@@ -1188,8 +1198,12 @@ fn test_add_node(cl: &Client) {
 
 fn test_get_added_node_info(cl: &Client) {
     cl.add_node("127.0.0.1:1234").unwrap();
-    let added_info = cl.get_added_node_info(None).unwrap();
-    assert_eq!(added_info.len(), 1);
+    cl.add_node("127.0.0.1:4321").unwrap();
+
+    assert!(cl.get_added_node_info(Some("127.0.0.1:1111")).is_err());
+    assert_eq!(cl.get_added_node_info(None).unwrap().len(), 2);
+    assert_eq!(cl.get_added_node_info(Some("127.0.0.1:1234")).unwrap().len(), 1);
+    assert_eq!(cl.get_added_node_info(Some("127.0.0.1:4321")).unwrap().len(), 1);
 }
 
 fn test_get_node_addresses(cl: &Client) {
@@ -1281,6 +1295,132 @@ fn test_unloadwallet(cl: &Client) {
         assert!(res.is_some());
     } else {
         assert!(res.is_none());
+    }
+}
+
+fn test_loadwallet(_: &Client) {
+    let wallet_name = "testloadwallet";
+    let wallet_client = new_wallet_client(wallet_name);
+
+    assert!(wallet_client.load_wallet(wallet_name).is_err());
+    wallet_client.create_wallet(wallet_name, None, None, None, None).unwrap();
+    assert!(wallet_client.load_wallet(wallet_name).is_err());
+    wallet_client.unload_wallet(None).unwrap();
+
+    let res = wallet_client.load_wallet(wallet_name).unwrap();
+    assert_eq!(res.name, wallet_name);
+    assert_eq!(res.warning, Some("".into()));
+}
+
+fn test_backupwallet(_: &Client) {
+    let wallet_client = new_wallet_client("testbackupwallet");
+    let backup_path = format!("{}/testbackupwallet.dat", get_testdir());
+
+    assert!(wallet_client.backup_wallet(None).is_err());
+    assert!(wallet_client.backup_wallet(Some(&backup_path)).is_err());
+    wallet_client.create_wallet("testbackupwallet", None, None, None, None).unwrap();
+    assert!(wallet_client.backup_wallet(None).is_err());
+    assert!(wallet_client.backup_wallet(Some(&backup_path)).is_ok());
+}
+
+fn test_wait_for_new_block(cl: &Client) {
+    let height = cl.get_block_count().unwrap();
+    let hash = cl.get_block_hash(height).unwrap();
+
+    assert!(cl.wait_for_new_block(std::u64::MAX).is_err()); // JSON integer out of range
+    assert_eq!(cl.wait_for_new_block(100).unwrap(), json::BlockRef{hash, height});
+}
+
+fn test_wait_for_block(cl: &Client) {
+    let height = cl.get_block_count().unwrap();
+    let hash = cl.get_block_hash(height).unwrap();
+
+    assert!(cl.wait_for_block(&hash, std::u64::MAX).is_err()); // JSON integer out of range
+    assert_eq!(cl.wait_for_block(&hash, 0).unwrap(), json::BlockRef{hash, height});
+}
+
+fn test_get_descriptor_info(cl: &Client) {
+    let res = cl.get_descriptor_info(r"pkh(cSQPHDBwXGjVzWRqAHm6zfvQhaTuj1f2bFH58h55ghbjtFwvmeXR)").unwrap();
+    assert_eq!(res.descriptor, r"pkh(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)#62k9sn4x");
+    assert_eq!(res.is_range, false);
+    assert_eq!(res.is_solvable, true);
+    assert_eq!(res.has_private_keys, true);
+
+    // Checksum introduced in: https://github.com/bitcoin/bitcoin/commit/26d3fad1093dfc697048313be7a96c9adf723654
+    if version() >= 190000 {
+        assert_eq!(res.checksum, Some("37v3lm8x".to_string()));
+    } else {
+        assert!(res.checksum.is_none());
+    }
+
+    assert!(cl.get_descriptor_info("abcdef").is_err());
+}
+
+fn test_add_multisig_address(cl: &Client) {
+    let addr1 = cl.get_new_address(None, Some(json::AddressType::Bech32)).unwrap().assume_checked();
+    let addr2 = cl.get_new_address(None, Some(json::AddressType::Bech32)).unwrap().assume_checked();
+    let addresses = [
+        json::PubKeyOrAddress::Address(&addr1),
+        json::PubKeyOrAddress::Address(&addr2),
+    ];
+
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, None).is_ok());
+    assert!(cl.add_multisig_address(addresses.len() - 1, &addresses, None, None).is_ok());
+    assert!(cl.add_multisig_address(addresses.len() + 1, &addresses, None, None).is_err());
+    assert!(cl.add_multisig_address(0, &addresses, None, None).is_err());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, Some("test_label"), None).is_ok());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, Some(json::AddressType::Legacy)).is_ok());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, Some(json::AddressType::P2shSegwit)).is_ok());
+    assert!(cl.add_multisig_address(addresses.len(), &addresses, None, Some(json::AddressType::Bech32)).is_ok());
+}
+
+#[rustfmt::skip]
+fn test_derive_addresses(cl: &Client) {
+    let descriptor = r"pkh(02e96fe52ef0e22d2f131dd425ce1893073a3c6ad20e8cac36726393dfb4856a4c)#62k9sn4x";
+    assert_eq!(
+        cl.derive_addresses(descriptor, None).unwrap(),
+        vec!["mrkwtj5xpYQjHeJe5wsweNjVeTKkvR5fCr".parse::<Address<NetworkUnchecked>>().unwrap()]
+    );
+    assert!(cl.derive_addresses(descriptor, Some([0, 1])).is_err()); // Range should not be specified for an unranged descriptor
+
+    let descriptor = std::concat!(
+        r"wpkh([1004658e/84'/1'/0']tpubDCBEcmVKbfC9KfdydyLbJ2gfNL88grZu1XcWSW9ytTM6fi",
+        r"tvaRmVyr8Ddf7SjZ2ZfMx9RicjYAXhuh3fmLiVLPodPEqnQQURUfrBKiiVZc8/0/*)#g8l47ngv",
+    );
+    assert_eq!(cl.derive_addresses(descriptor, Some([0, 1])).unwrap(), vec![
+        "bcrt1q5n5tjkpva8v5s0uadu2y5f0g7pn4h5eqaq2ux2".parse::<Address<NetworkUnchecked>>().unwrap(),
+        "bcrt1qcgl303ht03ja2e0hudpwk7ypcxk5t478wspzlt".parse::<Address<NetworkUnchecked>>().unwrap(),
+    ]);
+    assert!(cl.derive_addresses(descriptor, None).is_err()); // Range must be specified for a ranged descriptor
+}
+
+fn test_get_mempool_info(cl: &Client) {
+    let res = cl.get_mempool_info().unwrap();
+
+    if version() >= 190000 {
+        assert!(res.loaded.is_some());
+    } else {
+        assert!(res.loaded.is_none());
+    }
+
+    if version() >= 210000 {
+        assert!(res.unbroadcast_count.is_some());
+    } else {
+        assert!(res.unbroadcast_count.is_none());
+    }
+
+    if version() >= 220000 {
+        assert!(res.total_fee.is_some());
+    } else {
+        assert!(res.total_fee.is_none());
+    }
+
+    if version() >= 240000 {
+        assert!(res.incremental_relay_fee.is_some());
+        assert!(res.full_rbf.is_some());
+    } else {
+        assert!(res.incremental_relay_fee.is_none());
+        assert!(res.full_rbf.is_none());
     }
 }
 

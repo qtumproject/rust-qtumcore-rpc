@@ -13,7 +13,7 @@
 //! This is a client library for the Bitcoin Core JSON-RPC API.
 //!
 
-#![crate_name = "bitcoincore_rpc"]
+#![crate_name = "qtumcore_rpc"]
 #![crate_type = "rlib"]
 
 #[macro_use]
@@ -24,12 +24,11 @@ extern crate serde;
 
 pub extern crate jsonrpc;
 
-pub extern crate bitcoincore_rpc_json;
-pub use crate::json::bitcoin;
-pub use bitcoincore_rpc_json as json;
-use json::bitcoin::consensus::{Decodable, ReadExt};
-use bitcoin_hashes::hex::HexIterator;
-// use json::bitcoin::hashes::hex::HexIterator;
+pub extern crate qtumcore_rpc_json;
+pub use crate::json::qtum;
+pub use qtumcore_rpc_json as json;
+use json::qtum::consensus::{Decodable, ReadExt};
+use json::qtum::hex::HexToBytesIter;
 
 mod client;
 mod error;
@@ -40,10 +39,10 @@ pub use crate::error::Error;
 pub use crate::queryable::*;
 
 fn deserialize_hex<T: Decodable>(hex: &str) -> Result<T> {
-    let mut reader = HexIterator::new(&hex)?;
+    let mut reader = HexToBytesIter::new(&hex)?;
     let object = Decodable::consensus_decode(&mut reader)?;
     if reader.read_u8().is_ok() {
-        Err(Error::BitcoinSerialization(bitcoin::consensus::encode::Error::ParseFailed(
+        Err(Error::BitcoinSerialization(qtum::consensus::encode::Error::ParseFailed(
             "data not consumed entirely when explicitly deserializing",
         )))
     } else {
